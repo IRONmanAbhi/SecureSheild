@@ -7,6 +7,7 @@ import os
 import threading
 import random
 import time
+from engine import Engine
 
 class AntiVirusApp:
     def __init__(self, root):
@@ -19,6 +20,9 @@ class AntiVirusApp:
         self.heading_color = "#ffffff"
         self.sub_heading_color = "#cccccc"
         self.sub_sub_heading_color = "#888888"
+        
+        # Initialize the antivirus engine
+        self.scanner = Engine("malware_hashes.txt")
         
         # Initialize the main window
         self.root = root
@@ -231,6 +235,7 @@ class AntiVirusApp:
         if folder_path:
             self.selected_folder = folder_path
             self.folder_path_var.set(folder_path)
+            self.scanner.folder_scan(folder_path)
         else:
             self.selected_folder = None
             self.folder_path_var.set("No folder selected")
@@ -414,11 +419,16 @@ class AntiVirusApp:
         title_label = tk.Label(section, text=title, font=("Helvetica", 12, "bold"), fg=self.heading_color, bg=self.dark_color)
         title_label.pack(anchor="w", pady=(0, 10), padx=(10, 0))
         
+        # Store references to BooleanVars
+        if not hasattr(self, 'settings_vars'):
+            self.settings_vars = {}
+        
         for text, default in options:
             option_frame = tk.Frame(section, bg=self.dark_color, pady=3)
             option_frame.pack(fill=tk.X, padx=(10, 0))
             
             var = tk.BooleanVar(value=default)
+            self.settings_vars[text] = var
             switch = ttk.Checkbutton(option_frame, text=text, variable=var, style="Switch.TCheckbutton")
             switch.pack(anchor="w", padx=(10, 0))
     
@@ -428,6 +438,21 @@ class AntiVirusApp:
         
     def save_settings(self):
         # Save the settings and show a confirmation message
+        label_to_var = {
+            "Start with Windows": "start_with_windows",
+            "Show notifications": "show_notifications",
+            "Send anonymous usage statistics": "send_anonymous_stats",
+            "Check for updates automatically": "check_updates",
+            "Enable real-time file protection": "real_time_protection",
+            "Block suspicious websites": "suspicious_websites_protection",
+            "Scan system files": "scan_system_files",
+            "Check for updates daily": "check_updates_daily",
+            "Download updates automatically": "download_updates_automatically"
+        }
+    
+        for label, var_name in label_to_var.items():
+            if label in self.settings_vars:
+                setattr(self, var_name, self.settings_vars[label].get())
         messagebox.showinfo("Settings", "Settings saved successfully.")
     
     def show_settings(self):
@@ -451,7 +476,6 @@ class AntiVirusApp:
         notebook.add(general_tab, text="General")
         notebook.add(protection_tab, text="Protection")
         notebook.add(update_tab, text="Updates")
-        notebook.add(advanced_tab, text="Advanced")
         
         self.create_settings_section(general_tab, "Application Settings", [
             ("Start with Windows", self.start_with_windows),
@@ -474,22 +498,17 @@ class AntiVirusApp:
             ("Download updates automatically", self.download_updates_automatically)
         ])
         
-        update_frame = tk.Frame(update_tab, bg="#1e1e1e", pady=20)
+        update_frame = tk.Frame(update_tab, bg=self.dark_color, pady=20)
         update_frame.pack(fill=tk.X)
         
-        last_update_label = tk.Label(update_frame, text="Last update: Today at 08:24 AM", font=("Helvetica", 10), fg="#cccccc", bg="#1e1e1e")
+        last_update_label = tk.Label(update_frame, text="Last update: Today at 08:24 AM", font=("Helvetica", 10), fg=self.sub_heading_color, bg=self.dark_color)
         last_update_label.pack(side=tk.LEFT)
         
         update_button = ttk.Button(update_frame, text="Check for Updates", command=self.check_for_updates)
         update_button.pack(side=tk.RIGHT)
         
-        self.create_settings_section(advanced_tab, "Advanced Settings", [
-            ("Enable extended logging", False),
-            ("Show technical notifications", False),
-            ("Advanced heuristic analysis", True)
-        ])
         
-        save_frame = tk.Frame(self.content_frame, bg="#1e1e1e", pady=15)
+        save_frame = tk.Frame(self.content_frame, bg=self.dark_color, pady=15)
         save_frame.pack(fill=tk.X)
         
         save_button = ttk.Button(save_frame, text="Save Settings", style="Red.TButton", command=self.save_settings)
